@@ -16,8 +16,13 @@ if "messages" not in st.session_state:
 if st.button("Send") and user_input:
     try:
         # Generate AI answer
-        answer = get_ai_answer(user_input, collection)
+        answer, sources = get_ai_answer(user_input, collection)
 
+        if sources:
+            st.markdown("**Sources:**")
+            for src in sources:
+                st.markdown(f"- {src}")
+                
         # Append to session state
         st.session_state["messages"].append(("You", user_input))
         st.session_state["messages"].append(("AI", answer))
@@ -36,6 +41,7 @@ if st.button("Send") and user_input:
         # Append only the latest user+AI pair
         existing.append(st.session_state["messages"][-2:])
         chat_file.write_text(json.dumps(existing, indent=2))
+
 
     except Exception as e:
         st.error(f"Error generating answer: {e}")

@@ -11,26 +11,30 @@ load_dotenv()
 # ----------------------------
 openai.api_key = os.environ.get("OPENAI_API_KEY")
 
+from openai import OpenAI
+import os
+
+openai_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
 def ask_gpt(question, context):
-    """
-    Generates a natural answer using GPT-3.5-turbo based on retrieved context.
-    """
-    from openai import OpenAI
-
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-    # Use chat completion (GPT-3.5-turbo)
-    response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+    response = openai_client.chat.completions.create(
+        model="gpt-4o-mini",  # better, cheaper, safer
         messages=[
-            {"role": "system", "content": "You are a helpful customer support assistant."},
-            {"role": "user", "content": f"Answer the question based on the context below.\n\nContext: {context}\n\nQuestion: {question}"}
+            {
+                "role": "system",
+                "content": "You are a helpful customer support assistant. Answer ONLY using the provided context. If the answer is not in the context, say you don't know."
+            },
+            {
+                "role": "user",
+                "content": f"Context:\n{context}\n\nQuestion:\n{question}"
+            }
         ],
         temperature=0.2,
-        max_tokens=200
+        max_tokens=250
     )
 
     return response.choices[0].message.content
+
 
 # ----------------------------
 # Connect to persistent Chroma DB
@@ -38,19 +42,23 @@ def ask_gpt(question, context):
 DB_PATH = "chroma_db"
 COLLECTION_NAME = "support_docs"
 
-client = chromadb.PersistentClient(path=DB_PATH)
-collection = client.get_collection(name=COLLECTION_NAME)
+chroma_client = chromadb.PersistentClient(path=DB_PATH)
+collection = chroma_client.get_collection(name=COLLECTION_NAME)
 
 def get_ai_answer(question, collection):
-    """Return AI answer without using input() or print()."""
     if not question:
-        return ""
+        return "", []
 
     results = collection.query(query_texts=[question], n_results=3)
 
-    if results and "documents" in results and results["documents"]:
-        context = "\n\n".join(results["documents"][0])
+    if results and results["documents"]:
+        docs = results["documents"][0]
+        metadatas = results["metadatas"][0]
+        context = "\n\n".join(docs)
+        sources = list({m["source"] for m in metadatas})
     else:
         context = ""
+        sources = []
 
-    return ask_gpt(question, context)
+    answer = ask_gpt(question, context)
+    return answer, sources
