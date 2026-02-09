@@ -41,34 +41,16 @@ COLLECTION_NAME = "support_docs"
 client = chromadb.PersistentClient(path=DB_PATH)
 collection = client.get_collection(name=COLLECTION_NAME)
 
-# ----------------------------
-# Chat loop
-# ----------------------------
-print("Hello! Ask me anything about the documents.")
-print("Type 'exit' to quit.\n")
-
-while True:
-    question = input("> ").strip()
-
-    if question.lower() in ["exit", "quit"]:
-        print("Goodbye!")
-        break
+def get_ai_answer(question, collection):
+    """Return AI answer without using input() or print()."""
     if not question:
-        continue
+        return ""
 
-    # Retrieve top 3 relevant documents
-    results = collection.query(
-        query_texts=[question],
-        n_results=3
-    )
+    results = collection.query(query_texts=[question], n_results=3)
 
-    # Combine all relevant docs into a single context
-    context = "\n\n".join(results["documents"][0])
+    if results and "documents" in results and results["documents"]:
+        context = "\n\n".join(results["documents"][0])
+    else:
+        context = ""
 
-    # Generate AI answer
-    answer = ask_gpt(question, context)
-
-
-    print("\nAI Answer:")
-    print(answer)
-    print("\n---\n")
+    return ask_gpt(question, context)
