@@ -56,16 +56,18 @@ while True:
     if not question:
         continue
 
-    # Retrieve most relevant document
+    # Retrieve top 3 relevant documents
     results = collection.query(
         query_texts=[question],
-        n_results=1
+        n_results=3
     )
 
-    closest_doc = results["documents"][0][0]
+    # Combine all relevant docs into a single context
+    context = "\n\n".join(results["documents"][0])
 
     # Generate AI answer
-    answer = ask_gpt(question, closest_doc)
+    answer = ask_gpt(question, context)
+
 
     print("\nAI Answer:")
     print(answer)
